@@ -1,6 +1,8 @@
 # Apple M1 ML Test
 
-Some simple test to get `Tensorflow` running on Apple's M1 architecture.
+Some simple test to get `TensorFlow` running on Apple's M1 architecture.
+
+Hint: it works really well
 
 ![Result](Screen%20Shot%202021-12-21%20at%201.12.31%20AM.png)
 
