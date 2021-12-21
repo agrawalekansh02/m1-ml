@@ -2,7 +2,9 @@
 
 Some simple test to get `Tensorflow` running on Apple's M1 architecture.
 
-## Getting started
+![Result](Screen%20Shot%202021-12-21%20at%201.12.31%20AM.png)
+
+## Installation
 
 install conda:
 
