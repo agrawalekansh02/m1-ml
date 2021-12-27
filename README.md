@@ -44,3 +44,4 @@ python -m pip install tensorflow-metal
 ## Tests
 
 - `mnist_dnn.py` -> sample deep neural network performing classification on `mnist` dataset
+- `mnist_cnn.py` -> sample convultional neural network performing classfication on `mnist` dataset
