@@ -40,3 +40,7 @@ install TensorFlow(s)
 python -m pip install tensorflow-macos
 python -m pip install tensorflow-metal
 ```
+
+## Tests
+
+- `mnist_dnn.py` -> sample deep neural network performing classification on `mnist` dataset
