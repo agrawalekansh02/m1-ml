@@ -17,8 +17,8 @@ X_train = X_train[:40000]
 Y_train = Y_train[:40000]
 X_train = X_train.reshape(X_train.shape[0], img_rows*img_cols)
 X_test = X_test.reshape(X_test.shape[0], img_rows*img_cols)
-X_train = X_train.astype('float32')
-X_test = X_test.astype('float32')
+X_train = X_train.astype('float64')
+X_test = X_test.astype('float64')
 X_train /= 255
 X_test /= 255
 Y_train = keras.utils.np_utils.to_categorical(Y_train, num_classes)
@@ -41,11 +41,11 @@ def CNN_var(optimizer, activation):
                  activation=activation,
                  input_shape=input_shape))
   model.add(MaxPooling2D(pool_size=(2, 2)))
-  model.add(Conv2D(10, (5, 5), activation=activation))
+  model.add(Conv2D(100, (5, 5), activation=activation))
   model.add(Dropout(0.5))
   model.add(MaxPooling2D(pool_size=(2, 2)))
   model.add(Flatten())
-  model.add(Dense(20*4*4, activation=activation))
+  model.add(Dense(1000*4*4, activation=activation))
   model.add(Dropout(0.5))
   model.add(Dense(num_classes, activation='softmax'))
   model.compile(loss=keras.losses.categorical_crossentropy,
@@ -54,8 +54,8 @@ def CNN_var(optimizer, activation):
   return model
   
 # training
-batch_size = 128
-epochs = 5
+batch_size = 64
+epochs = 50
 model_gridsearch = KerasClassifier(build_fn=CNN_var, 
                         epochs=epochs, 
                         batch_size=batch_size,

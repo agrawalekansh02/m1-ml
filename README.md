@@ -45,3 +45,8 @@ python -m pip install tensorflow-metal
 
 - `mnist_dnn.py` -> sample deep neural network performing classification on `mnist` dataset
 - `mnist_cnn.py` -> sample convultional neural network performing classfication on `mnist` dataset
+
+## Further Reading
+
+[ways to to make tf architectures](https://pyimagesearch.com/2019/10/28/3-ways-to-create-a-keras-model-with-tensorflow-2-0-sequential-functional-and-model-subclassing/)
+[seq2seq chatbot](https://medium.com/swlh/how-to-design-seq2seq-chatbot-using-keras-framework-ae86d950e91d)
