@@ -22,14 +22,14 @@ def ResNet34(input_shape, num_classes, filter_size=64, activation="relu", kernel
     for i in range(4):
         if i == 0:
             for j in range(block_layers[i]):
-                x = res_block_iden(counter, x, filter_size, activation)
+                x = res_block_iden(counter, x, filter_size)
                 counter += 1
         else:
             filter_size *= 2
-            x = res_block_cnn(counter, x, filter_size, activation)
+            x = res_block_cnn(counter, x, filter_size)
             counter += 1
             for j in range(block_layers[i]-1):
-                x = res_block_iden(counter, x, filter_size, activation)
+                x = res_block_iden(counter, x, filter_size)
                 counter += 1
 
     # dense connections
@@ -48,8 +48,7 @@ def ResNet34(input_shape, num_classes, filter_size=64, activation="relu", kernel
 
 
 
-
-def res_block_iden(i, x, filters, activation, kernel_size=(3,3)):
+def res_block_iden(i, x, filters, activation='relu', kernel_size=(3,3)):
     x_copy = x
     
     # layer 1
@@ -73,7 +72,7 @@ def res_block_iden(i, x, filters, activation, kernel_size=(3,3)):
     output = tf.keras.layers.Activation(activation)(residual)
     return output
 
-def res_block_cnn(i, x, filters, activation, kernel_size=(3,3)):
+def res_block_cnn(i, x, filters, activation='relu', kernel_size=(3,3)):
     x_copy = x
     
     # layer 1
