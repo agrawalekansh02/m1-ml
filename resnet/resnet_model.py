@@ -7,6 +7,7 @@ def ResNet34(input_shape, num_classes, filter_size=64, activation="relu", kernel
     # layer 1
     conv1 = tf.keras.layers.Conv2D(filters=64, 
                                 kernel_size=7,
+                                stride=2,
                                 padding="same",
                                 name="conv1")(input_l)
     batch_norm = tf.keras.layers.BatchNormalization(name="batch_norm1")(conv1)
