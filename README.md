@@ -50,3 +50,4 @@ python -m pip install tensorflow-metal
 
 [ways to to make tf architectures](https://pyimagesearch.com/2019/10/28/3-ways-to-create-a-keras-model-with-tensorflow-2-0-sequential-functional-and-model-subclassing/)
 [seq2seq chatbot](https://medium.com/swlh/how-to-design-seq2seq-chatbot-using-keras-framework-ae86d950e91d)
+[keras model subclassing](https://stackoverflow.com/questions/52826134/keras-model-subclassing-examples)
