@@ -1,12 +1,11 @@
-from sklearn.semi_supervised import SelfTrainingClassifier
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
 
-def ModifiedVGG(Model):
+def VGG19(Model):
     def __init__(self, layer_activation, final_activation, dropout_rate, latent_dim, num_classes):
-        super(ModifiedVGG, self).__init__()
+        super(VGG19, self).__init__()
 
         self.al = layer_activation
         self.af = final_activation
@@ -17,7 +16,7 @@ def ModifiedVGG(Model):
 
     def build(self):
         self.conv = Sequential()
-        for filters, num_layers in zip([64, 128, 256], [2, 2, 3]):
+        for filters, num_layers in zip([64, 128, 256, 512, 512], [2, 2, 4, 4, 4]):
             for _ in range(num_layers):
                 self.conv.add(Conv2D(filters, (3, 3), padding='same', activation=self.al))
             self.conv.add(MaxPooling2D((2, 2)))
