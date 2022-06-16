@@ -1,41 +1,43 @@
 import tensorflow as tf
-from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import Layer, Conv2D, MaxPooling2D, AveragePooling2D, Flatten, Dense, Activation, BatchNormalization
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Input, Layer, Conv2D, MaxPool2D, Dense, Activation, BatchNormalization, GlobalAveragePooling2D, Dropout
+import random
+
 
 class ResidualBlock(Layer):
-    def __init__(self, filter_size, block_type, **kwargs):
-        super(ResidualBlock, self).__init__(**kwargs)
-
-        self.f = filter_size
-        if block_type == "iden":
-            self.s = 1
-        elif block_type == "conv":
-            self.s = 2
-
-    
-    def build(self):
-        if self.s == 1:
-            self.conv_shorcut = Conv2D(filters=self.f, 
-                                kernel_size=1, 
-                                padding='same',
-                                strides=self.s)
+    def __init__(self, block_type=None, n_filters=None):
+        super(ResidualBlock, self).__init__()
+        self.n_filters = n_filters
+        if block_type == 'identity':
+            self.strides = 1
+        elif block_type == 'conv':
+            self.strides = 2
+            self.conv_shorcut = Conv2D(filters=self.n_filters, 
+                               kernel_size=1, 
+                               padding='same',
+                               strides=self.strides,
+                               kernel_initializer='he_normal')
             self.bn_shortcut = BatchNormalization()
 
-        self.conv_1 = Conv2D(filters=self.f, 
+        self.conv_1 = Conv2D(filters=self.n_filters, 
                                kernel_size=3, 
                                padding='same',
-                               strides=self.s)
+                               strides=self.strides,
+                               kernel_initializer='he_normal',
+                               name=f"conv_1{random.randint(0, 100)}")
         self.bn_1 = BatchNormalization()
         self.relu_1 = Activation('relu')
+        self.drop_1 = Dropout(0.5)
 
-        self.conv_2 = Conv2D(filters=self.f, 
+        self.conv_2 = Conv2D(filters=self.n_filters, 
                                kernel_size=3, 
-                               padding='same')
+                               padding='same', 
+                               kernel_initializer='he_normal')
         self.bn_2 = BatchNormalization()
         self.relu_2 = Activation('relu')
+        self.drop_2 = Dropout(0.5)
 
-    
-    def call(self, x):
+    def call(self, x, training=False):
         shortcut = x
         if self.strides == 2:
             shortcut = self.conv_shorcut(x)
@@ -43,48 +45,57 @@ class ResidualBlock(Layer):
         y = self.conv_1(x)
         y = self.bn_1(y)
         y = self.relu_1(y)
+        y = self.drop_1(y)
         y = self.conv_2(y)
         y = self.bn_2(y)
         y = tf.add(shortcut, y)
         y = self.relu_2(y)
+        y = self.drop_2(y)
         return y
 
-
 class ResNet34(Model):
-    def __init__(self, final_activation, latent_dim, num_classes, **kwargs):
-        super(ResNet34, self).__init__(**kwargs)
+    def __init__(self, latent, n_classes, activation):
+        super(ResNet34, self).__init__()
 
-        self.a = final_activation
-        self.l = latent_dim
-        self.nc = num_classes
-
-    
-    def build(self):
-        self.conv = Sequential()
-        self.conv.add(Conv2D(filters=64, 
-                        kernel_size=7, 
-                        stride=2, 
-                        padding="same"))
-        self.conv.add(BatchNormalization())
-        self.conv.add(Activation("relu"))
-        self.conv.add(MaxPooling2D(pool_size=3, 
-                        strides=2, 
-                        padding="same"))
-
-        for n, layers, downscale in zip([64, 128, 256, 512], 
-                                        [3, 4, 6, 3], 
-                                        [False, True, True, True]):
-            for i in range(layers):
+        self.n_classes = n_classes
+        self.latent = latent
+        self.a = activation
+        self.conv_1 = Conv2D(filters=64, 
+                                kernel_size=7, 
+                                padding='same', 
+                                strides=2, 
+                                kernel_initializer='he_normal')
+        self.bn_1 = BatchNormalization(momentum=0.9)
+        self.relu_1 = Activation('relu')
+        self.maxpool = MaxPool2D(3, 2, padding='same')
+        self.residual_blocks = []
+        for n_filters, reps, downscale in zip([64, 128, 256, 512], 
+                                              [3, 4, 6, 3], 
+                                              [False, True, True, True]):
+            for i in range(reps):
                 if i == 0 and downscale:
-                    self.conv.add(ResidualBlock(n, "iden"))
+                    self.residual_blocks.append(ResidualBlock(block_type='conv', 
+                                                              n_filters=n_filters))
                 else:
-                    self.conv.add(ResidualBlock(n, "conv"))
-        
-        self.conv.add(AveragePooling2D())
-        self.conv.add(Flatten())
-        self.conv.add(Dense(self.l, activation="relu"))
-        self.conv.add(Dense(self.nc, activation=self.a))
+                    self.residual_blocks.append(ResidualBlock(block_type='identity', 
+                                                              n_filters=n_filters))
+        self.gap = GlobalAveragePooling2D()
+        self.fc = Dense(self.latent, kernel_initializer='he_normal', activation="relu")
+        self.o = Dense(units=self.n_classes, activation=self.a)
 
-    def call(self, x):
-        return self.conv(x)
+    def call(self, x, training=False):
+        y = self.conv_1(x)
+        y = self.bn_1(y)
+        y = self.relu_1(y)
+        y = self.maxpool(y)
+        for layer in self.residual_blocks:
+            y = layer(y)
+        y = self.gap(y)
+        y = self.fc(y)
+        y = self.o(y)
+        return y
 
+    def summary(self, input_shape):
+        x = Input(input_shape)
+        model = Model(inputs=[x], outputs=self.call(x))
+        return model.summary()
