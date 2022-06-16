@@ -4,7 +4,7 @@ import tensorflow as tf
 import keras
 from sklearn.model_selection import GridSearchCV
 from tensorflow.keras.datasets import cifar10
-from models.resnet import *
+from models.resnet34 import *
 
 # mnist data
 # (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
