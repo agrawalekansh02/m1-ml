@@ -27,7 +27,6 @@ class ResidualBlock(Layer):
                                name=f"conv_1{random.randint(0, 100)}")
         self.bn_1 = BatchNormalization()
         self.relu_1 = Activation('relu')
-        self.drop_1 = Dropout(0.5)
 
         self.conv_2 = Conv2D(filters=self.n_filters, 
                                kernel_size=3, 
@@ -35,7 +34,6 @@ class ResidualBlock(Layer):
                                kernel_initializer='he_normal')
         self.bn_2 = BatchNormalization()
         self.relu_2 = Activation('relu')
-        self.drop_2 = Dropout(0.5)
 
     def call(self, x, training=False):
         shortcut = x
@@ -45,12 +43,10 @@ class ResidualBlock(Layer):
         y = self.conv_1(x)
         y = self.bn_1(y)
         y = self.relu_1(y)
-        y = self.drop_1(y)
         y = self.conv_2(y)
         y = self.bn_2(y)
         y = tf.add(shortcut, y)
         y = self.relu_2(y)
-        y = self.drop_2(y)
         return y
 
 class ResNet34(Model):
@@ -60,6 +56,7 @@ class ResNet34(Model):
         self.n_classes = n_classes
         self.latent = latent
         self.a = activation
+
         self.conv_1 = Conv2D(filters=64, 
                                 kernel_size=7, 
                                 padding='same', 
