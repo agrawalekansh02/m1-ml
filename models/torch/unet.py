@@ -1,67 +1,86 @@
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 
-class UNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(UNet, self).__init__()
+class DoubleConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels=None):
+        super(DoubleConv2d, self).__init__()
+        if not mid_channels:
+            mid_channels = out_channels
 
-        num_neurons = [64, 128, 256, 512, 1024]
-
-        self.e1 = self.make_elayer(in_channels, num_neurons[0])
-        self.e2 = self.make_elayer(num_neurons[0], num_neurons[1])
-        self.e3 = self.make_elayer(num_neurons[1], num_neurons[2])
-        self.e4 = self.make_elayer(num_neurons[2], num_neurons[3])
-
-        latent = []
-        latent.append(nn.Conv2d(num_neurons[3], num_neurons[4], kernel_size=3, padding=1))
-        latent.append(nn.ReLU())
-        latent.append(nn.Conv2d(num_neurons[4], num_neurons[4], kernel_size=3, padding=1))
-        latent.append(nn.ReLU())
-        latent.append(nn.Upsample(scale_factor=2))
-        self.latent = nn.Sequential(*latent)
-
-        self.d1 = self.make_dlayer(num_neurons[4], num_neurons[3])
-        self.d2 = self.make_dlayer(num_neurons[3], num_neurons[2])
-        self.d3 = self.make_dlayer(num_neurons[2], num_neurons[1])
-        self.d4 = self.make_dlayer(num_neurons[1], num_neurons[0])
-
-        out = []
-        out.append(nn.Conv2d(num_neurons[0], out_channels, kernel_size=1, padding=1))
-        out.append(nn.Sigmoid())
-        self.out = nn.Sequential(*out)
-
-    
-    def make_elayer(self, in_channels, out_channels):
-        layers = []
-        layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
-        layers.append(nn.ReLU())
-        layers.append(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
-        layers.append(nn.ReLU())
-        layers.append(nn.MaxPool2d(kernel_size=2))
-        layers.append(nn.Dropout(0.5))
-        return nn.Sequential(*layers)
-
-
-    def make_dlayer(self, in_channels, out_channels):
-        layers = []
-        layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
-        layers.append(nn.ReLU())
-        layers.append(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
-        layers.append(nn.ReLU())
-        layers.append(nn.Upsample(scale_factor=2))
-        layers.append(nn.Dropout(0.5))
-        return nn.Sequential(*layers)
-
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
 
     def forward(self, x):
-        y0 = self.e1(x)
-        y1 = self.e2(y0)
-        y2 = self.e3(y1)
-        y3 = self.e4(y2)
-        y = self.latent(y3)
-        y = self.d1(torch.cat((y, y3), 1))
-        y = self.d2(torch.cat((y, y2)))
-        y = self.d3(torch.cat((y, y1)))
-        y = self.d4(torch.cat((y, y0)))
-        y = self.out(y)
-        return y
+        return self.conv(x)
+
+
+class Down(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Down, self).__init__()
+
+        self.down = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv2d(in_channels, out_channels)
+        )
+    
+    def forward(self, x):
+        return self.down(x)
+
+
+class Up(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Up, self).__init__()
+
+        self.up = nn.Upsample(2, mode='bilinear')
+        self.conv = DoubleConv2d(in_channels, out_channels, in_channels//2)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        y = torch.cat([x2, x1], dim=1)
+        return self.conv(y)
+
+
+class UNet(nn.Module):
+    def __init__(self, in_channels, out_channels, bilinear=False):
+        super(UNet, self).__init__()
+        self.n_channels = in_channels
+        self.n_classes = out_channels
+
+        self.i = DoubleConv2d(self.n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        self.down4 = Down(512, 1024 // 2)
+        self.up1 = Up(1024, 512 // 2)
+        self.up2 = Up(512, 256 // 2)
+        self.up3 = Up(256, 128 // 2)
+        self.up4 = Up(128, 64)
+        self.o = nn.Sequential(
+            nn.Conv2d(64, self.n_classes, kernel_size=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x1 = self.i(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        return self.o(x)
+
+
